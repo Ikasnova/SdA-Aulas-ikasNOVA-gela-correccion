@@ -16,6 +16,7 @@ function App() {
     progress: 0,
     error: null,
   });
+  const [isPrinting, setPrinting] = useState(false);
 
   // Official Palette Colors
   const colors = {
@@ -63,8 +64,7 @@ function App() {
 
   const downloadCSV = () => {
     if (!auditReport || !language) return;
-    const t = translations[language];
-
+    
     const headers = [
       'ID',
       'Criterio',
@@ -119,6 +119,45 @@ function App() {
     document.body.removeChild(link);
   };
 
+  const handleGeneratePDF = async () => {
+    if (!auditReport) return;
+    
+    setPrinting(true); // Triggers re-render to show simplified PDF view
+    
+    // Wait a tick for React to render the simplified view (headers + rubric only)
+    setTimeout(async () => {
+      const element = document.getElementById('report-content');
+      if (!element) {
+        setPrinting(false);
+        return;
+      }
+
+      const opt = {
+        margin: [10, 10, 10, 10], // Top, Left, Bottom, Right
+        filename: `Informe_Auditoria_${auditReport.analyzedFileName.replace(/\.[^/.]+$/, "")}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        // Changed mode to allow breaking large tables across pages
+        pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      try {
+        const html2pdf = (window as any).html2pdf;
+        if (html2pdf) {
+          await html2pdf().set(opt).from(element).save();
+        } else {
+          alert("Librería PDF no cargada. Use la opción de imprimir del navegador (Ctrl+P).");
+        }
+      } catch (error) {
+        console.error("PDF Generation Error", error);
+        alert("Error al generar PDF. Intente imprimir (Ctrl+P).");
+      } finally {
+        setPrinting(false); // Restore full view
+      }
+    }, 1000);
+  };
+
   // Language Selection Screen
   if (!language) {
     return (
@@ -156,8 +195,8 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: colors.bg }}>
-      {/* Header styled with Official Dark Anthracite */}
-      <header className="shadow-md border-b border-[#1a1a1a]/10" style={{ backgroundColor: colors.dark }}>
+      {/* Header - Hidden during PDF generation/Print */}
+      <header className={`shadow-md border-b border-[#1a1a1a]/10 ${isPrinting ? 'hidden' : 'block'}`} style={{ backgroundColor: colors.dark }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -184,7 +223,7 @@ function App() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
         {/* Upload Section - Hidden when printing */}
-        <div className="bg-white rounded-lg shadow-sm border p-8 mb-8 no-print" style={{ borderColor: '#E8EFF4' }}>
+        <div className={`bg-white rounded-lg shadow-sm border p-8 mb-8 no-print ${isPrinting ? 'hidden' : 'block'}`} style={{ borderColor: '#E8EFF4' }}>
           <div className="mb-6 text-center">
             <h2 className="text-xl font-bold uppercase tracking-wide" style={{ color: colors.dark }}>{t.auditTitle}</h2>
             <p className="text-sm text-gray-500 mt-2">{t.auditDesc}</p>
@@ -223,46 +262,81 @@ function App() {
         {auditReport && (
           <div className="animate-fade-in-up space-y-8">
             
-            {/* Overall Score Card */}
-            <div className="bg-white rounded-lg shadow-sm border p-8 flex flex-col md:flex-row items-center justify-between" style={{ borderColor: '#E8EFF4' }}>
-              <div className="flex-1 pr-8">
-                <div className="flex items-center mb-3">
-                   <h2 className="text-2xl font-bold" style={{ color: colors.dark }}>{t.reportTitle}</h2>
-                   <span className="ml-3 px-2 py-1 bg-[#E8EFF4] text-xs font-mono text-gray-600 rounded">{auditReport.analyzedFileName}</span>
-                </div>
-                <p className="text-gray-600 leading-relaxed border-l-4 pl-4 py-1" style={{ borderColor: colors.blueGrey }}>
-                  {auditReport.summary}
-                </p>
-              </div>
-              <div className="mt-6 md:mt-0 text-center">
-                <div 
-                  className="text-6xl font-bold tracking-tighter"
-                  style={{ color: getScoreColor(auditReport.overallScore) }}
-                >
-                  {auditReport.overallScore}
-                </div>
-                <span className="text-xs font-bold uppercase tracking-widest text-gray-400 mt-2 block">{t.score}</span>
-              </div>
-            </div>
-
-            {/* Detailed Criteria List */}
-            <div>
-              <div className="flex items-center mb-4 border-b pb-2" style={{ borderColor: '#E8EFF4' }}>
-                 <h3 className="text-lg font-bold uppercase tracking-wider" style={{ color: colors.blueGrey }}>{t.breakdown}</h3>
-              </div>
+            {/* REPORT CONTENT WRAPPER */}
+            <div id="report-content" className="space-y-8 bg-white p-4 sm:p-0">
               
-              <div className="grid grid-cols-1 gap-0">
-                {auditReport.criteriaResults.map((result) => (
-                  <AuditResultCard key={result.id} result={result} language={language} />
-                ))}
-              </div>
-            </div>
+              {/* --- PDF SPECIFIC HEADER (Visible only when printing) --- */}
+              {isPrinting && (
+                <div className="mb-8 border-b-2 pb-6 text-center" style={{ borderColor: colors.dark }}>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">{t.reportTitle}</h1>
+                  
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-left">
+                    <div className="mb-4">
+                       <span className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-1">SdA / Fichero:</span>
+                       <span className="text-xl font-semibold text-gray-800">{auditReport.analyzedFileName}</span>
+                    </div>
+                    <div>
+                       <span className="text-xs font-bold uppercase tracking-wider text-gray-500 block mb-1">{t.summary} / Nivel:</span>
+                       <p className="text-gray-700 text-base leading-relaxed">{auditReport.summary}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            {/* Evaluated Rubric Table */}
-            <RubricTable results={auditReport.criteriaResults} language={language} />
+              {/* --- SCREEN ONLY DASHBOARD (Hidden when printing) --- */}
+              {!isPrinting && (
+                <>
+                  {/* Overall Score Card */}
+                  <div className="bg-white rounded-lg shadow-sm border p-8 flex flex-col md:flex-row items-center justify-between break-inside-avoid" style={{ borderColor: '#E8EFF4' }}>
+                    <div className="flex-1 pr-8">
+                      <div className="flex items-center mb-3">
+                         <h2 className="text-2xl font-bold" style={{ color: colors.dark }}>{t.reportTitle}</h2>
+                         <span className="ml-3 px-2 py-1 bg-[#E8EFF4] text-xs font-mono text-gray-600 rounded">{auditReport.analyzedFileName}</span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed border-l-4 pl-4 py-1" style={{ borderColor: colors.blueGrey }}>
+                        {auditReport.summary}
+                      </p>
+                    </div>
+                    <div className="mt-6 md:mt-0 text-center">
+                      <div 
+                        className="text-6xl font-bold tracking-tighter"
+                        style={{ color: getScoreColor(auditReport.overallScore) }}
+                      >
+                        {auditReport.overallScore}
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-widest text-gray-400 mt-2 block">{t.score}</span>
+                    </div>
+                  </div>
+
+                  {/* Detailed Criteria List */}
+                  <div>
+                    <div className="flex items-center mb-4 border-b pb-2" style={{ borderColor: '#E8EFF4' }}>
+                       <h3 className="text-lg font-bold uppercase tracking-wider" style={{ color: colors.blueGrey }}>{t.breakdown}</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-0">
+                      {auditReport.criteriaResults.map((result) => (
+                        <AuditResultCard 
+                          key={result.id} 
+                          result={result} 
+                          language={language} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* --- RUBRIC (Always Visible) --- */}
+              <RubricTable 
+                results={auditReport.criteriaResults} 
+                language={language} 
+                isPrinting={isPrinting} 
+              />
+            </div>
 
             {/* Actions - Hidden when printing */}
-            <div className="flex justify-center pt-8 pb-12 gap-4 no-print">
+            <div className={`flex justify-center pt-8 pb-12 gap-4 no-print ${isPrinting ? 'hidden' : 'flex'}`}>
                <button 
                 onClick={downloadCSV}
                 className="inline-flex items-center px-6 py-3 border border-gray-300 text-sm font-bold uppercase tracking-wider rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
@@ -274,13 +348,21 @@ function App() {
               </button>
 
               <button 
-                onClick={() => window.print()}
-                className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-bold uppercase tracking-wider rounded shadow-sm text-white focus:outline-none hover:shadow-lg transition-shadow"
+                onClick={handleGeneratePDF}
+                disabled={isPrinting}
+                className="inline-flex items-center px-8 py-3 border border-transparent text-sm font-bold uppercase tracking-wider rounded shadow-sm text-white focus:outline-none hover:shadow-lg transition-shadow disabled:opacity-70 disabled:cursor-wait"
                 style={{ backgroundColor: colors.dark }}
               >
-                <svg className="mr-2 -ml-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
+                {isPrinting ? (
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="mr-2 -ml-1 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                )}
                 {t.print}
               </button>
             </div>

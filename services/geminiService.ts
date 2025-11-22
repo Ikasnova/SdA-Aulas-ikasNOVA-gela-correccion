@@ -11,109 +11,127 @@ const getClient = () => {
 
 const PROMPTS = {
   es: `
-    Actúa como un auditor experto y estricto en normativa educativa de Navarra (España) y calidad de Recursos Educativos Abiertos (REA) para eXeLearning.
-    Analiza el siguiente contenido XML extraído de un archivo .elp.
+    ROL: Auditor experto, riguroso y exhaustivo en normativa educativa de la Comunidad Foral de Navarra y calidad de Recursos Educativos Abiertos (REA).
+    TAREA: Analizar el contenido XML de un archivo eXeLearning y generar un informe de validación técnica y pedagógica.
+
+    PRINCIPIOS DE AUDITORÍA (CRÍTICOS):
+    1. DETERMINISMO: Tu análisis debe ser consistente. Ante la misma entrada, el resultado debe ser idéntico.
+    2. RIGOR: Sé estricto. Ante la duda o falta de evidencia, penaliza (WARNING o FAIL). No asumas cumplimiento si no está explícito.
+    3. EVIDENCIA: Basa cada juicio en el texto extraído. Cita literalmente si es necesario en 'details'.
+
+    NORMATIVA EDUCATIVA DE NAVARRA (REFERENCIA OBLIGATORIA):
+    Debes verificar que la normativa citada en el texto coincida con la etapa educativa detectada:
+    - Educación Infantil: Decreto Foral 61/2022
+    - Educación Primaria: Decreto Foral 67/2022
+    - Educación Secundaria Obligatoria (ESO): Decreto Foral 71/2022
+    - Bachillerato: Decreto Foral 72/2022
+    * Si el texto es de una etapa (ej: Primaria) pero cita el decreto de otra (ej: 71/2022), el estado debe ser WARNING o FAIL en el criterio 1.
+
+    RÚBRICA DE CALIFICACIÓN (MAPEO ESTRICTO):
+    Usa esta lógica para asignar el 'status' de cada criterio.
     
-    Tu objetivo es generar un informe riguroso en CASTELLANO. 
-    IMPORTANTE: Para los criterios 6, 7 y 8, debes realizar una VERIFICACIÓN DOBLE y EXHAUSTIVA.
+    CRITERIO 1: Ajuste al currículum de Navarra
+    - FAIL (Nivel 0): No cita currículo de Navarra o cita normativa derogada/antigua.
+    - WARNING (Nivel 1): Cita normativa de Navarra pero es incorrecta para la etapa detectada o es muy vaga.
+    - PASS (Nivel 2): Cita explícitamente el Decreto Foral VIGENTE correcto para la etapa.
 
-    CRITERIOS A EVALUAR:
+    CRITERIO 2: Realización de cambios exigidos
+    - FAIL (Nivel 0): Estructura inexistente o contenido simulado ("lorem ipsum").
+    - WARNING (Nivel 1): Faltan secciones clave (Introducción, Desarrollo o Evaluación).
+    - PASS (Nivel 2): Estructura completa y contenido real desarrollado.
 
-    1. Ajuste al currículum de Navarra (Análisis de Etapa):
-       - PASO 1: Identifica la ETAPA educativa a la que se dirige el recurso (Infantil, Primaria, ESO, Bachillerato o FP). Busca pistas en el texto (ej: "cursos 1º", "bachiller", etc.).
-       - PASO 2: Verifica si la normativa citada corresponde a esa etapa en Navarra.
-         * Infantil: Decreto Foral 61/2022.
-         * Primaria: Decreto Foral 67/2022.
-         * ESO: Decreto Foral 71/2022.
-         * Bachillerato: Decreto Foral 72/2022.
-       - Items: Crea una fila indicando la "Etapa Detectada", otra para "Normativa Citada" y verifica si coinciden.
+    CRITERIO 3: Redacción
+    - FAIL (Nivel 0): Errores gramaticales graves, incoherente o tono inadecuado.
+    - WARNING (Nivel 1): Comprensible pero con errores de estilo.
+    - PASS (Nivel 2): Clara, precisa y adaptada al alumnado.
 
-    2. Realización de cambios exigidos:
-       - Estructura completa (Introducción, Desarrollo, Cierre/Evaluación).
-       - Contenido real (detectar "Lorem ipsum", texto simulado o plantillas vacías).
+    CRITERIO 4: Lenguaje no discriminatorio
+    - FAIL (Nivel 0): Uso explícito de masculino genérico excluyente o estereotipos.
+    - WARNING (Nivel 1): Uso mixto o descuidos puntuales.
+    - PASS (Nivel 2): Uso consistente de lenguaje inclusivo (alumnado, profesorado, etc.).
 
-    3. Redacción cercana y precisa:
-       - Tono adecuado al alumnado.
-       - Claridad en instrucciones.
+    CRITERIO 5: Ortografía
+    - FAIL (Nivel 0): Múltiples errores ortográficos.
+    - WARNING (Nivel 1): 1-3 errores menores.
+    - PASS (Nivel 2): 0 errores.
 
-    4. Lenguaje no discriminatorio:
-       - Uso de lenguaje inclusivo (alumnado, infancia, profesorado).
-       - Evitar masculino genérico excluyente.
+    CRITERIO 6: Licencias abiertas (ANÁLISIS EXHAUSTIVO ITEM A ITEM)
+    - FAIL (Nivel 0): Recursos con Copyright, "Todos los derechos reservados" o sin licencia indicada.
+    - WARNING (Nivel 1): Licencias abiertas indicadas pero incompletas (falta autor) o genéricas para todo el archivo sin especificar en imágenes.
+    - PASS (Nivel 2): CADA imagen/recurso tiene su licencia CC (BY, BY-SA) explícita y correcta.
 
-    5. Ortografía y coherencia:
-       - Detección de faltas ortográficas o gramaticales evidentes.
+    CRITERIO 7: Citas y créditos
+    - FAIL (Nivel 0): Uso de textos/recursos externos sin citar.
+    - WARNING (Nivel 1): Citas incompletas.
+    - PASS (Nivel 2): Atribución completa de fuentes.
 
-    --- ANÁLISIS EXHAUSTIVO Y DETALLADO (PUNTOS CRÍTICOS) ---
-    Para los siguientes puntos (6, 7 y 8), es OBLIGATORIO listar CADA elemento encontrado. NO resumas. NO agrupes.
-    Si encuentras 20 imágenes, la lista 'items' debe tener 20 entradas.
+    CRITERIO 8: Enlaces (ANÁLISIS TÉCNICO DE CÓDIGO)
+    - FAIL (Nivel 0): Enlaces rotos o vacíos (href="" o #).
+    - WARNING (Nivel 1): Enlaces que abren en la misma pestaña (faltan target="_blank").
+    - PASS (Nivel 2): TODOS los enlaces externos tienen target="_blank".
 
-    6. Licencias abiertas (Inventario COMPLETO ítem por ítem):
-       - Identifica TODOS los recursos multimedia (imágenes, vídeos, audios, adjuntos) dentro del XML.
-       - En "items", genera una fila INDIVIDUAL por cada recurso. NO agrupes "Varias imágenes".
-       - Label: Nombre del archivo (ej: 'foto1.jpg') o descripción clara de la ubicación.
-       - Details: La licencia EXACTA detectada (ej: "CC BY-SA 4.0 en pie de foto", "Copyright en metadatos", "No indicada").
-       - Pass: TRUE solo si es explícitamente abierta (CC BY, SA, NC, Dominio Público). FALSE si es Copyright o no se encuentra.
-
-    7. Citas y créditos (Inventario COMPLETO):
-       - Identifica cada mención de autoría externa.
-       - En "items", lista CADA cita por separado.
-       - Details: Estado de la cita (ej: "Falta título", "Correcta").
-
-    8. Enlaces (Inventario COMPLETO de TODOS los enlaces):
-       - Analiza TODAS las etiquetas <a> del documento.
-       - En "items", genera una fila por CADA enlace sin excepción.
-       - Label: Texto del enlace (anchor) y URL destino.
-       - Details: Atributo 'target' real encontrado (ej: '_self', '_blank', 'vacío').
-       - Pass: TRUE estrictamente si tiene target="_blank". FALSE si abre en la misma ventana.
+    INSTRUCCIONES DE SALIDA:
+    - Genera un JSON válido.
+    - Para los criterios 6, 7 y 8, el array 'items' debe contener TODOS los elementos encontrados (todas las imágenes, todos los enlaces). NO resumas.
   `,
   eu: `
-    Jardun Nafarroako (Espainia) hezkuntza-arautegiko eta eXeLearning-eko Baliabide Irekietako (REA) aditu zorrotz gisa.
-    Analizatu .elp fitxategi batetik ateratako hurrengo XML edukia.
+    ROLA: Nafarroako Foru Komunitateko hezkuntza-araudian eta Baliabide Irekien (REA) kalitatean aditua den auditore zorrotza.
+    ZEREGINA: eXeLearning fitxategi baten XML edukia aztertu eta baliozkotze-txosten tekniko eta pedagogikoa sortu.
+
+    AUDITORIA-PRINTZIPIOAK (KRITIKOAK):
+    1. DETERMINISMOA: Emaitza berdina izan behar da beti sarrera berdinarekin.
+    2. ZORROZTASUNA: Zalantzarik bada, zigortu (WARNING edo FAIL).
+    3. EBIDENTZIA: Epai bakoitza testuan oinarritu.
+
+    NAFARROAKO HEZKUNTZA ARAUDIA (DERRIGORREZKO ERREFERENTZIA):
+    Egiaztatu aipatutako araudia detektatutako etapari dagokiola:
+    - Haur Hezkuntza: 61/2022 Foru Dekretua
+    - Lehen Hezkuntza: 67/2022 Foru Dekretua
+    - DBH (ESO): 71/2022 Foru Dekretua
+    - Batxilergoa: 72/2022 Foru Dekretua
+    * Testua etapa batekoa bada baina beste baten dekretua aipatzen badu, 1. irizpidea FAIL edo WARNING izan behar da.
+
+    KALIFIKAZIO-ERRUBRIKA (MAPEO ZORROTZA):
     
-    Zure helburua txosten zorrotz bat sortzea da EUSKARAZ.
-    GARRANTZITSUA: 6, 7 eta 8 irizpideetarako, EGIAZTAPEN BIKOITZA eta OSOA egin behar duzu.
+    1. IRIZPIDEA: Nafarroako curriculumarekiko egokitzapena
+    - FAIL (0 Maila): Ez da Nafarroako curriculuma aipatzen edo indargabetutakoa aipatzen da.
+    - WARNING (1 Maila): Okerreko etapa aipatzen da edo oso lausoa da.
+    - PASS (2 Maila): Etapari dagokion INDARREKO Foru Dekretua aipatzen da esplizituki.
 
-    EBALUATU BEHARREKO IRIZPIDEAK:
+    2. IRIZPIDEA: Eskatutako aldaketak
+    - FAIL (0 Maila): Egiturarik ez edo "lorem ipsum".
+    - WARNING (1 Maila): Atal garrantzitsuak falta dira.
+    - PASS (2 Maila): Egitura osoa eta benetako edukia.
 
-    1. Nafarroako curriculumarekiko egokitzapena (Etaparen Analisia):
-       - 1. URRATSA: Identifikatu baliabidearen hezkuntza-ETAPA.
-       - 2. URRATSA: Egiaztatu aipatutako araudia Nafarroako etapa horri dagokion.
-       - Items: Sortu errenkada bat "Detektatutako Etapa" adierazteko, eta beste bat "Aipatutako Araudia"rentzat.
+    3. IRIZPIDEA: Idazkera
+    - FAIL (0 Maila): Akats larriak edo tonu desegokia.
+    - WARNING (1 Maila): Ulergarria baina hobetzekoa.
+    - PASS (2 Maila): Argia, zehatza eta ikasleari egokitua.
 
-    2. Eskatutako aldaketak egitea:
-       - Egitura osoa (Sarrera, Garapena, Amaiera/Ebaluazioa).
-       - Benetako edukia ("Lorem ipsum" edo txantiloi hutsak detektatu).
+    4. IRIZPIDEA: Hizkera ez-diskriminatzailea
+    - FAIL (0 Maila): Hizkera baztertzailea.
+    - WARNING (1 Maila): Akats puntualak.
+    - PASS (2 Maila): Hizkera inklusiboaren erabilera sendoa.
 
-    3. Idazkera hurbila eta zehatza:
-       - Ikasleei egokitutako tonua.
-       - Argibideetan argitasuna.
+    5. IRIZPIDEA: Ortografia
+    - FAIL (0 Maila): Akats asko.
+    - WARNING (1 Maila): 1-3 akats txiki.
+    - PASS (2 Maila): 0 akats.
 
-    4. Hizkera ez-diskriminatzailea:
-       - Hizkera inklusiboaren erabilera.
+    6. IRIZPIDEA: Lizentzia irekiak (AZTERKETA SAKONA ELEMENTUZ ELEMENTU)
+    - FAIL (0 Maila): Copyright edo lizentziarik gabe.
+    - WARNING (1 Maila): Lizentzia irekiak baina osatugabeak.
+    - PASS (2 Maila): Irudi/baliabide BAKOITZAK CC lizentzia zuzena du.
 
-    5. Ortografia eta koherentzia:
-       - Falta ortografiko edo gramatikal nabarmenak detektatu.
+    7. IRIZPIDEA: Aipamenak
+    - FAIL (0 Maila): Aipamenik ez.
+    - WARNING (1 Maila): Aipamen osatugabeak.
+    - PASS (2 Maila): Iturrien aipamen zuzena.
 
-    --- ANALISI OSOA ETA ZEHATZA (PUNTU KRITIKOAK) ---
-    Hurrengo puntuetarako (6, 7 eta 8), NAHITAEZKOA da elementu BAKOITZA zerrendatzea. EZ laburbildu. EZ multzokatu.
-
-    6. Lizentzia irekiak (Inbentario OSOA elementuz elementu):
-       - Identifikatu baliabide GUZTIAK (irudiak, bideoak, audioak).
-       - "items" atalean, sortu errenkada BANAKOA baliabide bakoitzeko.
-       - Label: Fitxategiaren izena edo deskribapena.
-       - Details: Aurkitutako lizentzia ZEHATZA.
-       - Pass: TRUE soilik lizentzia esplizituki irekia bada.
-
-    7. Aipamenak eta kredituak (Inbentario OSOA):
-       - Identifikatu kanpo-egiletzaren aipamen bakoitza.
-       - "items" atalean, zerrendatu aipamen BAKOITZA bereizita.
-
-    8. Estekak (Esteka GUZTIEN inbentario OSOA):
-       - Analizatu dokumentuko <a> etiketa GUZTIAK.
-       - "items" atalean, sortu errenkada bat esteka BAKOITZEKO salbuespenik gabe.
-       - Label: Estekaren testua eta URL.
-       - Details: Aurkitutako 'target' atributua.
-       - Pass: TRUE soilik target="_blank" bada.
+    8. IRIZPIDEA: Estekak (KODEAREN AZTERKETA TEKNIKOA)
+    - FAIL (0 Maila): Esteka hautsiak edo hutsak.
+    - WARNING (1 Maila): Leiho berean irekitzen dira (ez dute target="_blank").
+    - PASS (2 Maila): Kanpo-esteka GUZTIEK target="_blank" dute.
   `
 };
 
@@ -134,30 +152,31 @@ export const auditContent = async (fileName: string, xmlContent: string, languag
         ]
       },
       config: {
+        temperature: 0, // FORCE DETERMINISTIC OUTPUT
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            overallScore: { type: Type.NUMBER, description: "Puntuación/Puntuazioa (0-100)." },
-            summary: { type: Type.STRING, description: "Resumen ejecutivo incluyendo la etapa educativa detectada / Laburpen exekutiboa detektatutako etapa barne." },
+            overallScore: { type: Type.NUMBER, description: "Puntuación/Puntuazioa (0-100) calculada basada en la suma de niveles de rúbrica (0, 1, 2)." },
+            summary: { type: Type.STRING, description: "Resumen ejecutivo incluyendo la etapa educativa detectada y decreto aplicado." },
             criteriaResults: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
                 properties: {
                   id: { type: Type.INTEGER },
-                  name: { type: Type.STRING, description: "Nombre del criterio en el idioma solicitado / Irizpidearen izena." },
+                  name: { type: Type.STRING },
                   status: { type: Type.STRING, enum: ["PASS", "WARNING", "FAIL"] },
-                  observation: { type: Type.STRING, description: "Resumen cualitativo / Behaketa." },
+                  observation: { type: Type.STRING, description: "Justificación estricta basada en la rúbrica." },
                   items: {
                     type: Type.ARRAY,
-                    description: "Lista detallada y verificada elemento a elemento / Zerrenda zehatza eta egiaztatua.",
+                    description: "Lista exhaustiva de evidencias (imágenes, enlaces, citas).",
                     items: {
                       type: Type.OBJECT,
                       properties: {
-                        label: { type: Type.STRING, description: "Elemento identificado / Elementua." },
+                        label: { type: Type.STRING },
                         pass: { type: Type.BOOLEAN },
-                        details: { type: Type.STRING, description: "Detalles rigurosos del hallazgo / Aurkikuntzaren xehetasun zorrotzak." }
+                        details: { type: Type.STRING }
                       },
                       required: ["label", "pass", "details"]
                     }
