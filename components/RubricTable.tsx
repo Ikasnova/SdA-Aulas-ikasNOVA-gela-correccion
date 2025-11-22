@@ -7,9 +7,10 @@ interface Props {
   results: CriterionResult[];
   language: Language;
   isPrinting?: boolean;
+  onUpdateChange?: (id: number, newStatus: EvaluationStatus) => void;
 }
 
-const RubricTable: React.FC<Props> = ({ results, language, isPrinting = false }) => {
+const RubricTable: React.FC<Props> = ({ results, language, isPrinting = false, onUpdateChange }) => {
   const content = rubricContent[language];
   const t = translations[language];
 
@@ -26,6 +27,11 @@ const RubricTable: React.FC<Props> = ({ results, language, isPrinting = false })
   // Calculate total score
   const totalScore = results.reduce((acc, curr) => acc + getScore(curr.status), 0);
   const maxScore = results.length * 2;
+
+  const handleCellClick = (id: number, status: EvaluationStatus) => {
+    if (isPrinting || !onUpdateChange) return;
+    onUpdateChange(id, status);
+  };
 
   return (
     // Removed break-inside-avoid from the container to allow table to split across pages
@@ -64,11 +70,15 @@ const RubricTable: React.FC<Props> = ({ results, language, isPrinting = false })
               // Find corresponding result by ID.
               // If IDs in Gemini response don't perfectly align (1-8), fallback to index.
               const result = results.find(r => r.id === row.id) || results[idx];
-              const score = result ? getScore(result.status) : 0;
+              const currentScore = result ? getScore(result.status) : 0;
+              const id = result ? result.id : row.id;
               
               // Condensed padding for print
               const cellPadding = isPrinting ? 'px-2 py-2' : 'px-4 py-4';
               const firstColPadding = isPrinting ? 'px-2 py-2' : 'px-6 py-4';
+              
+              // Interactive classes
+              const interactiveClass = (!isPrinting && onUpdateChange) ? 'cursor-pointer hover:opacity-80 transition-all' : '';
 
               return (
                 <tr key={row.id}>
@@ -76,18 +86,30 @@ const RubricTable: React.FC<Props> = ({ results, language, isPrinting = false })
                     {row.criterion}
                   </td>
                   
-                  {/* 0 Points Cell */}
-                  <td className={`${cellPadding} text-center border-r border-gray-100 transition-colors ${score === 0 ? 'bg-red-100 ring-inset ring-2 ring-red-500 font-bold text-red-900 print:bg-gray-200 print:border-2 print:border-black' : 'text-gray-500'}`}>
+                  {/* 0 Points Cell (FAIL) */}
+                  <td 
+                    onClick={() => handleCellClick(id, EvaluationStatus.FAIL)}
+                    className={`${cellPadding} text-center border-r border-gray-100 ${interactiveClass} hover:bg-red-50 ${currentScore === 0 ? 'bg-red-100 ring-inset ring-2 ring-red-500 font-bold text-red-900 print:bg-gray-200 print:border-2 print:border-black' : 'text-gray-500'}`}
+                    title={!isPrinting ? "Click to mark as Failed (0 pts)" : ""}
+                  >
                     {row.levels[0]}
                   </td>
 
-                  {/* 1 Point Cell */}
-                  <td className={`${cellPadding} text-center border-r border-gray-100 transition-colors ${score === 1 ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-500 font-bold text-yellow-900 print:bg-gray-200 print:border-2 print:border-black' : 'text-gray-500'}`}>
+                  {/* 1 Point Cell (WARNING) */}
+                  <td 
+                    onClick={() => handleCellClick(id, EvaluationStatus.WARNING)}
+                    className={`${cellPadding} text-center border-r border-gray-100 ${interactiveClass} hover:bg-yellow-50 ${currentScore === 1 ? 'bg-yellow-100 ring-inset ring-2 ring-yellow-500 font-bold text-yellow-900 print:bg-gray-200 print:border-2 print:border-black' : 'text-gray-500'}`}
+                    title={!isPrinting ? "Click to mark as Warning (1 pt)" : ""}
+                  >
                     {row.levels[1]}
                   </td>
 
-                  {/* 2 Points Cell */}
-                  <td className={`${cellPadding} text-center transition-colors ${score === 2 ? 'bg-green-100 ring-inset ring-2 ring-green-500 font-bold text-green-900 print:bg-gray-200 print:border-2 print:border-black' : 'text-gray-500'}`}>
+                  {/* 2 Points Cell (PASS) */}
+                  <td 
+                    onClick={() => handleCellClick(id, EvaluationStatus.PASS)}
+                    className={`${cellPadding} text-center ${interactiveClass} hover:bg-green-50 ${currentScore === 2 ? 'bg-green-100 ring-inset ring-2 ring-green-500 font-bold text-green-900 print:bg-gray-200 print:border-2 print:border-black' : 'text-gray-500'}`}
+                    title={!isPrinting ? "Click to mark as Passed (2 pts)" : ""}
+                  >
                     {row.levels[2]}
                   </td>
                 </tr>

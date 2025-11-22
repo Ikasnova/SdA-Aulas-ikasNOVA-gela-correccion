@@ -4,7 +4,7 @@ import AuditResultCard from './components/AuditResultCard';
 import RubricTable from './components/RubricTable';
 import { parseElpFile } from './utils/elpParser';
 import { auditContent } from './services/geminiService';
-import { AuditReport, UploadState, Language } from './types';
+import { AuditReport, UploadState, Language, EvaluationStatus } from './types';
 import { translations } from './utils/translations';
 
 function App() {
@@ -54,6 +54,37 @@ function App() {
         error: err.message || "Error desconocido al procesar el archivo." 
       });
     }
+  };
+
+  // Handle manual rubric override by user
+  const handleRubricChange = (id: number, newStatus: EvaluationStatus) => {
+    if (!auditReport) return;
+
+    // 1. Update the specific criterion status
+    const updatedCriteria = auditReport.criteriaResults.map((c) => {
+      if (c.id === id) {
+        return { ...c, status: newStatus };
+      }
+      return c;
+    });
+
+    // 2. Recalculate Overall Score based on new rubric values
+    // Logic: 8 criteria * 2 points max = 16 points total.
+    // Score = (TotalPoints / 16) * 100
+    const totalPoints = updatedCriteria.reduce((acc, curr) => {
+      if (curr.status === EvaluationStatus.PASS) return acc + 2;
+      if (curr.status === EvaluationStatus.WARNING) return acc + 1;
+      return acc;
+    }, 0);
+    
+    const maxPoints = updatedCriteria.length * 2 || 16;
+    const newOverallScore = Math.round((totalPoints / maxPoints) * 100);
+
+    setAuditReport({
+      ...auditReport,
+      criteriaResults: updatedCriteria,
+      overallScore: newOverallScore
+    });
   };
 
   const getScoreColor = (score: number) => {
@@ -185,7 +216,7 @@ function App() {
                 Euskara
              </button>
            </div>
-           <p className="mt-10 text-xs text-gray-400 uppercase tracking-widest">ikasNOVA gela 25 26</p>
+           <p className="mt-10 text-xs text-gray-400 uppercase tracking-widest">ikasNOVA gela 25/26</p>
         </div>
       </div>
     );
@@ -327,11 +358,12 @@ function App() {
                 </>
               )}
 
-              {/* --- RUBRIC (Always Visible) --- */}
+              {/* --- RUBRIC (Always Visible, Now Interactive) --- */}
               <RubricTable 
                 results={auditReport.criteriaResults} 
                 language={language} 
-                isPrinting={isPrinting} 
+                isPrinting={isPrinting}
+                onUpdateChange={handleRubricChange}
               />
             </div>
 

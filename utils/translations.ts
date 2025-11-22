@@ -2,7 +2,7 @@ export type Language = 'es' | 'eu';
 
 export const translations = {
   es: {
-    title: "Corrección de SdA Aulas ikasNOVA gela 25 26",
+    title: "Corrección de SdA: Aula ikasNOVA gela 25/26",
     subtitle: "Herramienta de validación normativa para eXeLearning v3.0",
     auditTitle: "Auditoría de Recursos",
     auditDesc: "Sube tu fichero .elp/.elpx para verificar el cumplimiento de los 8 criterios del currículum oficial.",
@@ -40,7 +40,7 @@ export const translations = {
     point: "Punto"
   },
   eu: {
-    title: "ikasNOVA gela 25 26 SdA Zuzenketa",
+    title: "ikasNOVA gela 25/26 SdA Zuzenketa",
     subtitle: "eXeLearning v3.0rako araudia balioztatzeko tresna",
     auditTitle: "Baliabideen Auditoria",
     auditDesc: "Igo zure .elp/.elpx fitxategia curriculum ofizialaren 8 irizpideak betetzen direla egiaztatzeko.",
