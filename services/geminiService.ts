@@ -55,10 +55,13 @@ const PROMPTS = {
     - WARNING (Nivel 1): 1-3 errores menores.
     - PASS (Nivel 2): 0 errores.
 
-    CRITERIO 6: Licencias abiertas (ANÁLISIS EXHAUSTIVO ITEM A ITEM)
-    - FAIL (Nivel 0): Recursos con Copyright, "Todos los derechos reservados" o sin licencia indicada.
+    CRITERIO 6: Licencias abiertas (ANÁLISIS EXHAUSTIVO: TEXTO + METADATOS)
+    IMPORTANTE: Al final del contenido XML encontrarás un apartado llamado "INFORME TÉCNICO DE METADATOS INCRUSTADOS".
+    Debes consultarlo. Si una imagen no tiene licencia visible en el texto, pero aparece en los metadatos con una licencia válida (CC BY, CC BY-SA, Public Domain), cuéntala como correcta (PASS).
+    
+    - FAIL (Nivel 0): Recursos con Copyright, "Todos los derechos reservados" o sin licencia indicada (ni en texto ni en metadatos).
     - WARNING (Nivel 1): Licencias abiertas indicadas pero incompletas (falta autor) o genéricas para todo el archivo sin especificar en imágenes.
-    - PASS (Nivel 2): CADA imagen/recurso tiene su licencia CC (BY, BY-SA) explícita y correcta.
+    - PASS (Nivel 2): CADA imagen/recurso tiene su licencia CC (BY, BY-SA) explícita y correcta, ya sea visible en el texto o incrustada en sus metadatos.
 
     CRITERIO 7: Citas y créditos
     - FAIL (Nivel 0): Uso de textos/recursos externos sin citar.
@@ -118,10 +121,13 @@ const PROMPTS = {
     - WARNING (1 Maila): 1-3 akats txiki.
     - PASS (2 Maila): 0 akats.
 
-    6. IRIZPIDEA: Lizentzia irekiak (AZTERKETA SAKONA ELEMENTUZ ELEMENTU)
-    - FAIL (0 Maila): Copyright edo lizentziarik gabe.
+    6. IRIZPIDEA: Lizentzia irekiak (AZTERKETA SAKONA: TESTUA + METADATUAK)
+    GARRANTZITSUA: XML edukiaren amaieran "INFORME TÉCNICO DE METADATOS INCRUSTADOS" atala aurkituko duzu.
+    Kontsultatu behar duzu. Irudi batek testuan lizentzia ikusgarririk ez badu, baina metadatuetan lizentzia baliozko bat agertzen bada (CC BY, CC BY-SA), ontzat eman (PASS).
+
+    - FAIL (0 Maila): Copyright edo lizentziarik gabe (ez testuan ez metadatuetan).
     - WARNING (1 Maila): Lizentzia irekiak baina osatugabeak.
-    - PASS (2 Maila): Irudi/baliabide BAKOITZAK CC lizentzia zuzena du.
+    - PASS (2 Maila): Irudi/baliabide BAKOITZAK CC lizentzia zuzena du (ikusgarria edo metadatuetan).
 
     7. IRIZPIDEA: Aipamenak
     - FAIL (0 Maila): Aipamenik ez.
@@ -148,7 +154,7 @@ export const auditContent = async (fileName: string, xmlContent: string, languag
       contents: {
         parts: [
           { text: promptText },
-          { text: `--- INICIO/HASIERA CONTENIDO XML (eXeLearning) ---\n${xmlContent.substring(0, 1500000)}\n--- FIN/AMAIERA CONTENIDO XML ---` }
+          { text: `--- INICIO/HASIERA CONTENIDO XML + METADATOS ---\n${xmlContent.substring(0, 1500000)}\n--- FIN/AMAIERA CONTENIDO ---` }
         ]
       },
       config: {
